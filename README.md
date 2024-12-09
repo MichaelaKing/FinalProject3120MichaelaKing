@@ -1,1 +1,1 @@
-# spotify-api-workshop
+Spotify Application for Final Project. 
