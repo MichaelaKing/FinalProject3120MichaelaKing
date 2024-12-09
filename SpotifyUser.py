@@ -3,7 +3,7 @@ from spotipy.oauth2 import SpotifyOAuth
 import pandas as pd
 import matplotlib.pyplot as plt
 
-
+# Identity of the user
 CLIENT_ID = '8810837ef20d4cb7a5fdf4260e366409'
 CLIENT_SECRET = 'a96ed65091c34e76ab2bf49e4986aca1'
 REDIRECT_URI = 'https://oauth.pstmn.io/v1/callback'
@@ -16,7 +16,7 @@ sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
     redirect_uri=REDIRECT_URI,
     scope=scope
 ))
-
+# Getter for the top user data
 def get_user_top_data():
     print("Fetching user's top artists and tracks...")
     top_artists = sp.current_user_top_artists(limit=20, time_range='medium_term')
@@ -38,7 +38,7 @@ def get_user_top_data():
 
     return pd.DataFrame(artists_data), pd.DataFrame(tracks_data)
 
-
+# Analyze users music taste by breaking comparing them to popular artists
 def analyze_music_taste(artists_df, tracks_df):
     # Most popular artists
     top_artists = artists_df.sort_values('Popularity', ascending=False).head(5)
