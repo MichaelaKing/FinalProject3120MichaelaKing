@@ -4,8 +4,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # Identity of the user
-CLIENT_ID = '8810837ef20d4cb7a5fdf4260e366409'
-CLIENT_SECRET = 'a96ed65091c34e76ab2bf49e4986aca1'
+CLIENT_ID = ''
+CLIENT_SECRET = ''
 REDIRECT_URI = 'https://oauth.pstmn.io/v1/callback'
 
 
