@@ -1,78 +1,69 @@
-import spotipy
-from spotipy.oauth2 import SpotifyOAuth
-import pandas as pd
-import matplotlib.pyplot as plt
+import requests
+import base64
+import json
+import webbrowser
+import urllib.parse
 
-# Identity of the user
-CLIENT_ID = ''
-CLIENT_SECRET = ''
-REDIRECT_URI = 'https://oauth.pstmn.io/v1/callback'
+#Spotify credentials (replace with your actual values)
+CLIENT_ID = '8810837ef20d4cb7a5fdf4260e366409'
+CLIENT_SECRET = '13e560bd868245e9b6dc58328837b2aa'
+REDIRECT_URI = 'http://localhost:8888/callback'
+SCOPE = 'user-top-read'
 
+#Step 1: Get user authorization
+def get_user_authorization():
+    auth_url = 'https://accounts.spotify.com/authorize'
+    params = {
+        'client_id': CLIENT_ID,
+        'response_type': 'code',
+        'redirect_uri': REDIRECT_URI,
+        'scope': SCOPE
+    }
+    auth_request = f"{auth_url}?{urllib.parse.urlencode(params)}"
+    print("Opening browser for Spotify authorization...")
+    webbrowser.open(auth_request)
 
-scope = 'user-top-read'
-sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
-    client_id=CLIENT_ID,
-    client_secret=CLIENT_SECRET,
-    redirect_uri=REDIRECT_URI,
-    scope=scope
-))
-# Getter for the top user data
-def get_user_top_data():
-    print("Fetching user's top artists and tracks...")
-    top_artists = sp.current_user_top_artists(limit=20, time_range='medium_term')
-    top_tracks = sp.current_user_top_tracks(limit=20, time_range='medium_term')
-    
-    artists_data = [{
-        'Name': artist['name'],
-        'Genres': ', '.join(artist['genres']),
-        'Popularity': artist['popularity']
-    } for artist in top_artists['items']]
+#Step 2: Exchange authorization code for an access token
+def get_access_token(auth_code):
+    token_url = 'https://accounts.spotify.com/api/token'
+    auth_header = base64.b64encode(f"{CLIENT_ID}:{CLIENT_SECRET}".encode()).decode()
+    headers = {'Authorization': f"Basic {auth_header}"}
+    data = {
+        'grant_type': 'authorization_code',
+        'code': auth_code,
+        'redirect_uri': REDIRECT_URI
+    }
+    response = requests.post(token_url, headers=headers, data=data)
+    return response.json().get('access_token')
 
-    tracks_data = [{
-        'Name': track['name'],
-        'Artist': ', '.join([artist['name'] for artist in track['artists']]),
-        'Popularity': track['popularity'],
-        'Danceability': sp.audio_features(track['id'])[0]['danceability'],
-        'Energy': sp.audio_features(track['id'])[0]['energy']
-    } for track in top_tracks['items']]
+#Step 3: Fetch user's top artists
+def fetch_top_artists(access_token):
+    headers = {'Authorization': f"Bearer {access_token}"}
+    endpoint = 'https://api.spotify.com/v1/me/top/artists'
+    params = {'limit': 10}#Fetch top 10 artists
+    response = requests.get(endpoint, headers=headers, params=params)
+    return response.json()
 
-    return pd.DataFrame(artists_data), pd.DataFrame(tracks_data)
-
-# Analyze users music taste by breaking comparing them to popular artists
-def analyze_music_taste(artists_df, tracks_df):
-    # Most popular artists
-    top_artists = artists_df.sort_values('Popularity', ascending=False).head(5)
-    print("\nTop Artists:")
-    print(top_artists)
-
-    # Danceability and Energy Analysis
-    print("\nTracks Danceability & Energy:")
-    print(tracks_df[['Name', 'Danceability', 'Energy']])
-
-    # Plot: Danceability vs Energy
-    plt.figure(figsize=(10, 6))
-    plt.scatter(tracks_df['Danceability'], tracks_df['Energy'], alpha=0.7)
-    for i in range(len(tracks_df)):
-        plt.text(tracks_df['Danceability'].iloc[i], tracks_df['Energy'].iloc[i], tracks_df['Name'].iloc[i], fontsize=9)
-    plt.title('Danceability vs Energy of Tracks')
-    plt.xlabel('Danceability')
-    plt.ylabel('Energy')
-    plt.grid()
-    plt.show()
-
-    # Popularity distribution
-    plt.figure(figsize=(10, 6))
-    plt.hist(tracks_df['Popularity'], bins=10, alpha=0.7, color='blue')
-    plt.title('Track Popularity Distribution')
-    plt.xlabel('Popularity')
-    plt.ylabel('Frequency')
-    plt.grid()
-    plt.show()
-
-# Main
-def main():
-    artists_df, tracks_df = get_user_top_data()
-    analyze_music_taste(artists_df, tracks_df)
-
+#Main execution
 if __name__ == "__main__":
-    main()
+    #Step 1: Ask the user to authorize
+    print("Step 1: Authorize the app...")
+    get_user_authorization()
+    print("After authorization, copy the 'code' parameter from the URL and paste it here.")
+    auth_code = input("Enter the authorization code: ").strip()
+
+    #Step 2: Get access token
+    print("\nStep 2: Fetching access token...")
+    access_token = get_access_token(auth_code)
+    if not access_token:
+        print("Failed to get access token. Check your credentials and authorization code.")
+        exit()
+
+    #Step 3: Fetch top artists
+    print("\nStep 3: Fetching your top artists...")
+    top_artists = fetch_top_artists(access_token)
+
+    #Display results
+    print("\nYour Top Artists:")
+    for idx, artist in enumerate(top_artists.get('items', []), start=1):
+        print(f"{idx}. {artist['name']}")
